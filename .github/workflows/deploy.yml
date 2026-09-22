@@ -1,0 +1,99 @@
+name: Deploy Full Stack App
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy-backend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: SSH and Deploy Backend
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.GCP_VM_IP }}
+          username: ${{ secrets.GCP_VM_USER }}
+          key: ${{ secrets.GCP_VM_SSH_KEY }}
+          script: |
+            cd ~/fullstack-react-node-postgreSQL
+            git pull origin main
+            cd backend
+            sudo docker build -t fullstack-backend:latest .
+            sudo docker stop fullstack-backend || true
+            sudo docker rm fullstack-backend || true
+            sudo docker run -d --name fullstack-backend --restart=always \
+              -p 5050:5050 \
+              fullstack-backend:latest
+            echo "Backend deployed successfully"
+
+  deploy-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: SSH and Deploy Frontend
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.GCP_VM_IP }}
+          username: ${{ secrets.GCP_VM_USER }}
+          key: ${{ secrets.GCP_VM_SSH_KEY }}
+          script: |
+            cd ~/fullstack-react-node-postgreSQL
+            git pull origin main
+            cd frontend
+            sudo docker build -t fullstack-frontend:latest .
+            sudo docker stop fullstack-frontend || true
+            sudo docker rm fullstack-frontend || true
+            sudo docker run -d --name fullstack-frontend --restart=always \
+              -p 3000:3000 \
+              fullstack-frontend:latest
+            echo "Frontend deployed successfully"
+
+  notify:
+    needs: [deploy-backend, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Send Email on Success
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "✅ Full Stack Deployment Successful"
+          to: ${{ secrets.EMAIL_TO }}
+          from: "GitHub Actions"
+          body: |
+            ✅ Full Stack Deployment Successful!
+            
+            Both Backend and Frontend deployed successfully.
+            
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref }}
+            Time: ${{ github.event.head_commit.timestamp }}
+
+      - name: Send Email on Failure
+        if: failure()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          username: ${{ secrets.EMAIL_USERNAME }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
+          subject: "❌ Full Stack Deployment Failed"
+          to: ${{ secrets.EMAIL_TO }}
+          from: "GitHub Actions"
+          body: |
+            ❌ Full Stack Deployment FAILED!
+            
+            Check the logs here:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref }}
