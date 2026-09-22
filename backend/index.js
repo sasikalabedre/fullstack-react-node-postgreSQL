@@ -11,7 +11,7 @@ app.use(express.urlencoded({extended: true}));
 app.use(cors());
 
 app.get('/', (request, response) => {
-    response.json({ info: 'Node.js, Express, and PostgresSQL API apps'});
+    response.json({ info: 'Node.js, Express, and PostgresSQL API applications'});
 });
 
 app.get('/users', db.getUsers);
