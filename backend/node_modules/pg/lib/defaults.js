@@ -1,11 +1,18 @@
 'use strict'
 
+let user
+try {
+  user = process.platform === 'win32' ? process.env.USERNAME : process.env.USER
+} catch {
+  // ignore, e.g., Deno without --allow-env
+}
+
 module.exports = {
   // database host. defaults to localhost
   host: 'localhost',
 
   // database user's name
-  user: process.platform === 'win32' ? process.env.USERNAME : process.env.USER,
+  user,
 
   // name of database to connect
   database: undefined,
@@ -42,6 +49,9 @@ module.exports = {
 
   ssl: false,
 
+  // SSL negotiation style: 'postgres' (traditional SSLRequest) or 'direct'
+  sslnegotiation: undefined,
+
   application_name: undefined,
 
   fallback_application_name: undefined,
@@ -53,6 +63,10 @@ module.exports = {
   // max milliseconds any query using this connection will execute for before timing out in error.
   // false=unlimited
   statement_timeout: false,
+
+  // Abort any statement that waits longer than the specified duration in milliseconds while attempting to acquire a lock.
+  // false=unlimited
+  lock_timeout: false,
 
   // Terminate any session with an open transaction that has been idle for longer than the specified duration in milliseconds
   // false=unlimited
@@ -68,10 +82,10 @@ module.exports = {
   keepalives_idle: 0,
 }
 
-var pgTypes = require('pg-types')
+const pgTypes = require('pg-types')
 // save default parsers
-var parseBigInteger = pgTypes.getTypeParser(20, 'text')
-var parseBigIntegerArray = pgTypes.getTypeParser(1016, 'text')
+const parseBigInteger = pgTypes.getTypeParser(20, 'text')
+const parseBigIntegerArray = pgTypes.getTypeParser(1016, 'text')
 
 // parse int8 so you can get your count values as actual numbers
 module.exports.__defineSetter__('parseInt8', function (val) {
